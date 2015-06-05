@@ -63,7 +63,7 @@ class Report extends HtmlRenderer {
             }
         }
 
-        foreach (array(Compare::DIFFERENT_FILE_CONTENT, Compare::SAME_FILE_BUT_COMMENTS) as $section) {
+        foreach (array(Compare::DIFFERENT_FILE_CONTENT, Compare::SAME_FILE_BUT_COMMENTS, Compare::FILE_PATCHED_IN_B) as $section) {
             if (array_key_exists($section, $data)) {
                 if (count($data[$section]) > 0) {
                     $this->addHeadline("Changed files ($section)", 3, array('id' => $idPrefix . $section));
@@ -73,4 +73,4 @@ class Report extends HtmlRenderer {
         }
     }
 
-} 
+}

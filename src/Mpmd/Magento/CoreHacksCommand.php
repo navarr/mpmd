@@ -89,8 +89,7 @@ class CoreHacksCommand extends \N98\Magento\Command\AbstractMagentoCommand
         $htmlReportOutputPath = $this->_input->getArgument('htmlReportOutputPath');
 
         if ($htmlReportOutputPath) {
-
-            foreach (array(\Mpmd\Util\Compare::DIFFERENT_FILE_CONTENT, \Mpmd\Util\Compare::SAME_FILE_BUT_COMMENTS) as $section) {
+            foreach (array(\Mpmd\Util\Compare::DIFFERENT_FILE_CONTENT, \Mpmd\Util\Compare::SAME_FILE_BUT_COMMENTS, \Mpmd\Util\Compare::FILE_PATCHED_IN_B) as $section) {
                 $diffs[$section] = $compareUtil->getDiffs(
                     $data[$section],
                     $pathToVanillaCore,

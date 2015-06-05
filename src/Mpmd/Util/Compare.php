@@ -18,6 +18,7 @@ class Compare
     const SAME_FILE_BUT_COMMENTS = 'sameFileButComments';
     const FILE_MISSING_IN_A = 'fileMissingInA';
     const SAME_FILE_BUT_WHITESPACE = 'sameFileButWhitespace';
+    const FILE_PATCHED_IN_B = 'filePatchedInB';
 
     /**
      * Compare two directories
@@ -32,24 +33,39 @@ class Compare
     public function compareDirectories($baseDirA, $baseDirB, $path='', $ignore=array())
     {
         $data = array(
-            self::DIFFERENT_FILE_CONTENT   => array(),
-            self::IDENTICAL_FILES          => array(),
-            self::FILE_MISSING_IN_B        => array(),
-            self::SAME_FILE_BUT_COMMENTS   => array(),
-            self::SAME_FILE_BUT_WHITESPACE => array(),
+            self::DIFFERENT_FILE_CONTENT    => array(),
+            self::IDENTICAL_FILES           => array(),
+            self::FILE_MISSING_IN_B         => array(),
+            self::SAME_FILE_BUT_COMMENTS    => array(),
+            self::SAME_FILE_BUT_WHITESPACE  => array(),
+            self::FILE_PATCHED_IN_B         => array(),
         );
+        $patchFile = implode(DIRECTORY_SEPARATOR, array($baseDirB, 'app', 'etc', 'applied.patches.list'));
+        $patchedFiles = array();
+        if (file_exists($patchFile)) {
+            $contents = file_get_contents($patchFile);
+            $contents = explode("\n", $contents);
+            foreach ($contents as $line) {
+                $start = "patching file ";
+                if (strpos($line, $start) !== false) {
+                    $patchedFiles[] = trim(substr($line, strlen($start)));
+                }
+            }
+        }
         if ($handle = opendir($baseDirA . $path)) {
             while ($file = readdir($handle)) {
                 if ($file == '.' || $file == '..' || in_array($file, $ignore)) {
                     continue;
                 }
-
+                $check = (!empty($path) ? (substr($path,1) . DIRECTORY_SEPARATOR) : "") . $file;
                 if (is_dir($baseDirA . $path . DIRECTORY_SEPARATOR . $file)) {
                     $tmp = $this->compareDirectories($baseDirA, $baseDirB, $path . DIRECTORY_SEPARATOR . $file, $ignore);
                     // merge data
                     foreach ($tmp as $key => $value) {
                         $data[$key] = array_merge($data[$key], $value);
                     }
+                } elseif (in_array($check, $patchedFiles)) {
+                    $data[self::FILE_PATCHED_IN_B][] = $path . DIRECTORY_SEPARATOR . $file;
                 } else {
                     $aFile = $baseDirA . $path . DIRECTORY_SEPARATOR . $file;
                     $bFile = $baseDirB . $path . DIRECTORY_SEPARATOR . $file;
@@ -82,7 +98,7 @@ class Compare
             return self::IDENTICAL_FILES;
         }
         $extension = strtolower(pathinfo($aFile, PATHINFO_EXTENSION));
-        
+
         $additionalCheck = in_array($extension, array('php', 'phtml', 'xml'));
         if ($this->getFileContentWithoutWhitespace($aFile) === $this->getFileContentWithoutWhitespace($bFile)) {
             return self::SAME_FILE_BUT_WHITESPACE;
@@ -139,10 +155,10 @@ class Compare
             throw new \Exception("$extension is not supported here");
         }
     }
-    
+
     /**
      * Get file content (without whitespace characters)
-     * 
+     *
      * @param $path
      */
     public function getFileContentWithoutWhitespace($path)
@@ -188,7 +204,7 @@ class Compare
         $diffs = array();
         foreach ($files as $file) {
             $status = $this->compareFiles($baseA . $file, $baseB . $file);
-            if ($status == self::DIFFERENT_FILE_CONTENT) {
+            if (in_array($status,array(self::DIFFERENT_FILE_CONTENT, self::FILE_PATCHED_IN_B))) {
                 $content = $this->getFileDiff($baseA . $file, $baseB . $file);
                 if ($html) {
                     $content = '<pre class="diff">' . htmlspecialchars($content) . '</pre>';
